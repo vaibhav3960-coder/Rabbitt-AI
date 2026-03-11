@@ -75,7 +75,7 @@ export default function App() {
   }
 
   // Define logical steps for the console
-  const getAgentStep = (step: Step, index: number) => {
+  const getAgentStep = (step: Step) => {
     if (step.tool === 'tool_signal_harvester') return { num: 1, label: "Harvesting signals..." };
     if (step.tool === 'tool_research_analyst') return { num: 2, label: "Generating research brief..." };
     if (step.tool === 'tool_outreach_automated_sender') return { num: 3, label: "Drafting outreach email..." };
@@ -197,7 +197,7 @@ export default function App() {
                 
                 <div className="flex flex-col gap-6">
                   {history.map((step, idx) => {
-                    const agentStep = getAgentStep(step, idx);
+                    const agentStep = getAgentStep(step);
                     if (step.role === 'assistant' && agentStep) {
                       return (
                         <div key={idx} className="flex gap-4 items-start animate-in fade-in slide-in-from-left-4 duration-500">
