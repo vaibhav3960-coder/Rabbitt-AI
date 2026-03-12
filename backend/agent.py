@@ -177,7 +177,7 @@ def tool_outreach_automated_sender(brief: str, target_email: str) -> str:
         """
         chat_completion = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
         )
         
         # Phase 6: Sync stats
