@@ -1,8 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+```
+import { useState, useRef, useEffect, useMemo } from 'react';
 
 type Step = {
   role: string;
   content: string;
+  type?: 'thought' | 'action' | 'observation' | 'decision'; // Added 'type' property
   tool?: string;
   args?: any;
 };
@@ -128,6 +130,48 @@ export default function App() {
     } catch (e) {}
   }
 
+  // Transform history into granular steps for display
+  const steps = useMemo(() => {
+    const transformedSteps: Step[] = [];
+    history.forEach(step => {
+      if (step.role === 'assistant') {
+        // Assistant messages can be thoughts or actions
+        const thoughtMatch = step.content.match(/^Thought:\s*(.*)/s);
+        if (thoughtMatch) {
+          transformedSteps.push({
+            ...step,
+            type: 'thought',
+            content: thoughtMatch[1].trim(),
+          });
+        }
+        if (step.tool) {
+          transformedSteps.push({
+            ...step,
+            type: 'action',
+            content: `Calling tool: ${step.tool}`,
+          });
+        }
+      } else if (step.role === 'tool') {
+        // Tool messages are observations
+        transformedSteps.push({
+          ...step,
+          type: 'observation',
+          content: step.content,
+        });
+      }
+    });
+    if (finalResult) {
+      transformedSteps.push({
+        role: 'assistant',
+        type: 'decision',
+        content: finalResult.replace(/\\n/g, '\n').replace(/^["']|["']$/g, '').replace('--- DRAFTED EMAIL ---', ''),
+      });
+    }
+    return transformedSteps;
+  }, [history, finalResult]);
+
+  // The getAgentStep function is no longer directly used for the main execution log display
+  // but might be kept if other parts of the UI still rely on it.
   const getAgentStep = (step: Step) => {
     if (step.tool === 'tool_signal_harvester') return { num: 1, label: "Harvesting signals..." };
     if (step.tool === 'tool_research_analyst') return { num: 2, label: "Generating research brief..." };
@@ -252,22 +296,6 @@ export default function App() {
               </h2>
             </div>
             
-            <div className="flex flex-col gap-4 bg-black/60 border border-slate-800 rounded-3xl p-8 shadow-2xl overflow-hidden">
-              <div className="flex-1 max-h-[400px] overflow-y-auto pr-4 custom-scrollbar">
-                {history.length === 0 && !isRunning && (
-                  <div className="flex h-full items-center justify-center text-slate-600 flex-col gap-4 py-20">
-                    <svg className="w-16 h-16 opacity-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
-                    <span className="font-bold tracking-widest text-sm uppercase opacity-40">System Idle</span>
-                  </div>
-                )}
-                
-                <div className="flex flex-col gap-6">
-                  {history.map((step, idx) => {
-                    const agentStep = getAgentStep(step);
-                    if (step.role === 'assistant' && agentStep) {
-                      return (
-                        <div key={idx} className="flex gap-4 items-start animate-in fade-in slide-in-from-left-4 duration-500">
-                          <div className="w-10 h-10 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-black shrink-0">
                             {agentStep.num}
                           </div>
                           <div className="pt-2">
