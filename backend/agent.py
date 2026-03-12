@@ -409,13 +409,21 @@ TOOL USAGE POLICY:
             final_response = response_message.content
             # Special check: If the final response is short/meta, try to append the last sent email
             for msg in reversed(messages):
-                # Safely get role and name
                 try:
-                    m_role = getattr(msg, 'role', None) or (msg.get("role") if isinstance(msg, dict) else None)
-                    m_name = getattr(msg, 'name', None) or (msg.get("name") if isinstance(msg, dict) else None)
+                    # Robust check for role/name
+                    m_role = getattr(msg, 'role', None)
+                    if m_role is None and isinstance(msg, dict):
+                        m_role = msg.get("role")
+                        
+                    m_name = getattr(msg, 'name', None)
+                    if m_name is None and isinstance(msg, dict):
+                        m_name = msg.get("name")
                     
                     if m_role == "tool" and m_name == "tool_outreach_automated_sender":
-                        content = getattr(msg, 'content', None) or msg.get("content")
+                        content = getattr(msg, 'content', None)
+                        if content is None and isinstance(msg, dict):
+                            content = msg.get("content")
+                        
                         if content:
                             res_data = json.loads(content)
                             if "email_copy" in res_data:

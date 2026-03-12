@@ -288,38 +288,62 @@ export default function App() {
             </form>
           </div>
 
-          <div className="lg:col-span-7 flex flex-col gap-8">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-black text-white flex items-center gap-3">
+          <div className="lg:col-span-7 flex flex-col gap-6">
+            <div>
+              <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2 uppercase tracking-tighter">
+                <span className="w-2 h-6 bg-indigo-500 rounded-full"></span>
                 Execution Engine
-              </h2>
-            </div>
-            
-                            {agentStep.num}
-                          </div>
-                          <div className="pt-2">
-                            <h4 className="text-white font-bold leading-none mb-1">Step {agentStep.num}: {agentStep.label}</h4>
-                            <p className="text-slate-500 text-xs font-mono">Dispatched tool: {step.tool}</p>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })}
+              </h3>
+              
+              {/* Thought Logs */}
+              <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 min-h-[400px] overflow-y-auto max-h-[600px] custom-scrollbar">
+                {steps.length === 0 && !isRunning && (
+                  <div className="flex flex-col items-center justify-center h-full text-slate-500 gap-4 opacity-50">
+                    <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <p className="text-sm font-medium">No execution activity detected.</p>
+                  </div>
+                )}
+                
+                <div className="space-y-4">
+                  {steps.map((step, idx) => (
+                    <div key={idx} className={`p-4 rounded-xl border animate-in fade-in slide-in-from-bottom-2 duration-500 ${
+                      step.type === 'thought' ? 'bg-amber-500/5 border-amber-500/20' :
+                      step.type === 'action' ? 'bg-indigo-500/5 border-indigo-500/20' :
+                      step.type === 'observation' ? 'bg-emerald-500/5 border-emerald-500/20' :
+                      step.type === 'decision' ? 'bg-white/5 border-white/10' :
+                      'bg-slate-800/50 border-slate-700'
+                    }`}>
+                      <div className="flex items-center gap-2 mb-2">
+                         {step.type === 'thought' && <span className="text-[10px] font-bold uppercase tracking-widest text-amber-500">Thought</span>}
+                         {step.type === 'action' && <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-500">Action: {step.content}</span>}
+                         {step.type === 'observation' && <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-500">Observation</span>}
+                         {step.type === 'decision' && <span className="text-[10px] font-bold uppercase tracking-widest text-white">Final Decision</span>}
+                      </div>
+                      <p className={`text-sm leading-relaxed ${
+                        step.type === 'thought' ? 'text-amber-200/80 italic' :
+                        step.type === 'observation' ? 'text-emerald-200/80' :
+                        'text-slate-300'
+                      }`}>
+                        {step.type === 'action' ? 'Dispatched Tooling' : step.content}
+                      </p>
+                      {step.args && (
+                        <pre className="mt-2 text-[10px] bg-black/40 p-2 rounded text-indigo-300 overflow-x-auto">
+                          {JSON.stringify(step.args, null, 2)}
+                        </pre>
+                      )}
+                    </div>
+                  ))}
                   
                   {isRunning && (
-                    <div className="flex gap-4 items-start animate-pulse">
-                      <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0">
-                        <div className="w-2 h-2 bg-indigo-400 rounded-full animate-ping"></div>
-                      </div>
-                      <div className="pt-2">
-                        <h4 className="text-slate-400 font-bold leading-none">Processing intent...</h4>
-                      </div>
+                    <div className="flex items-center gap-3 p-4 bg-indigo-500/5 border border-indigo-500/20 rounded-xl animate-pulse">
+                      <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce"></div>
+                      <p className="text-sm text-indigo-300">Agent is reasoning...</p>
                     </div>
                   )}
                   <div ref={consoleEndRef} />
                 </div>
               </div>
+            </div>
 
               {parsedSignals && (
                 <div className="mt-6 pt-6 border-t border-white/5 animate-in fade-in zoom-in duration-700">
