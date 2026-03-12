@@ -134,7 +134,7 @@ def tool_research_analyst(signals: str, icp: str) -> str:
         """
         chat_completion = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant", # Switched to 8B to save tokens
         )
         return chat_completion.choices[0].message.content
     except Exception as e:
@@ -326,14 +326,17 @@ Output Rule: In your final response, display the full body of the email you draf
     for _ in range(5):
         try:
             response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model="llama-3.1-8b-instant",
                 messages=messages,
                 tools=tools,
                 tool_choice="auto",
                 max_tokens=4096,
             )
         except Exception as e:
-            final_response = f"Agent Loop Error: {str(e)}"
+            if "rate_limit_exceeded" in str(e).lower():
+                final_response = "Rate limit reached on Groq (70B model). Please wait a few minutes or try again later. We've optimized the research steps to use 8B to minimize this."
+            else:
+                final_response = f"Agent Loop Error: {str(e)}"
             break
         
         response_message = response.choices[0].message
