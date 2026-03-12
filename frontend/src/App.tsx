@@ -122,13 +122,7 @@ export default function App() {
     }
   };
 
-  const harvestedSignals = history.find(s => s.tool === 'tool_signal_harvester' && s.role === 'tool')?.content;
-  let parsedSignals = null;
-  if (harvestedSignals) {
-    try {
-      parsedSignals = JSON.parse(harvestedSignals);
-    } catch (e) {}
-  }
+
 
   const steps = useMemo(() => {
     const transformedSteps: Step[] = [];
