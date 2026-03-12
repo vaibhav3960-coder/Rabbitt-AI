@@ -270,7 +270,7 @@ export default function App() {
                     <div className="flex items-center gap-2 mb-2">
                        {step.type === 'thought' && <span className="text-[10px] font-bold uppercase tracking-widest text-amber-500">Reasoning</span>}
                        {step.type === 'action' && <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-500">Action: {step.content}</span>}
-                       {step.type === 'observation' && <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-500">Observation</span>}
+                       {step.type === 'observation' && <span className="text-[10px) font-bold uppercase tracking-widest text-emerald-500">Observation</span>}
                     </div>
                     <p className={`text-sm leading-relaxed ${
                       step.type === 'thought' ? 'text-amber-200/80 italic' :
