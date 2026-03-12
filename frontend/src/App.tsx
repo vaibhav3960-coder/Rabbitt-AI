@@ -17,8 +17,26 @@ export default function App() {
   
   const [history, setHistory] = useState<Step[]>([]);
   const [finalResult, setFinalResult] = useState<string | null>(null);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isApproved, setIsApproved] = useState(false);
+  const [stats, setStats] = useState({ signals_detected: 0, emails_generated: 0, emails_sent: 0 });
   
   const consoleEndRef = useRef<HTMLDivElement>(null);
+
+  const fetchStats = async () => {
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_BASE_URL}/api/stats`);
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data);
+      }
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
 
   useEffect(() => {
     consoleEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -33,7 +51,6 @@ export default function App() {
     setFinalResult(null);
 
     try {
-      // Use environment variable for production, fallback to localhost for development
       const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       const response = await fetch(`${API_BASE_URL}/api/run-agent`, {
         method: 'POST',
@@ -53,10 +70,8 @@ export default function App() {
 
       setHistory(data.history || []);
       setFinalResult(data.final_result || 'Agent execution completed successfully.');
-      
-      if (data.final_result && !data.final_result.includes('Error')) {
-        setSuccess(`Email successfully dispatched to ${targetEmail}`);
-      }
+      setIsApproved(false);
+      fetchStats();
       
     } catch (err: any) {
       setError(err.message || 'An error occurred.');
@@ -65,7 +80,46 @@ export default function App() {
     }
   };
 
-  // Helper to extract signals for visualization
+  const handleApproveSend = async () => {
+    setIsApproving(true);
+    setError(null);
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const emailCopy = finalResult?.replace(/\\n/g, '\n').replace(/^["']|["']$/g, '').replace('--- DRAFTED EMAIL ---', '') || "";
+
+       // Extract target company from history (tool_signal_harvester content usually has it)
+       const harvesterStep = history.find(s => s.tool === 'tool_signal_harvester' && s.role === 'assistant');
+       let targetCompany = "Unknown";
+       if (harvesterStep && harvesterStep.args) {
+         try {
+           const args = typeof harvesterStep.args === 'string' ? JSON.parse(harvesterStep.args) : harvesterStep.args;
+           targetCompany = args.target || "Unknown";
+         } catch (e) {}
+       }
+ 
+       const response = await fetch(`${API_BASE_URL}/api/approve-send`, {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ 
+           email_copy: emailCopy, 
+           target_email: targetEmail,
+           target_company: targetCompany
+         }),
+       });
+
+      if (!response.ok) throw new Error('Failed to send approval');
+      
+      const data = await response.json();
+      setSuccess(data.message);
+      setIsApproved(true);
+      fetchStats();
+    } catch (err: any) {
+      setError(err.message || 'Failed to approve and send.');
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
   const harvestedSignals = history.find(s => s.tool === 'tool_signal_harvester' && s.role === 'tool')?.content;
   let parsedSignals = null;
   if (harvestedSignals) {
@@ -74,7 +128,6 @@ export default function App() {
     } catch (e) {}
   }
 
-  // Define logical steps for the console
   const getAgentStep = (step: Step) => {
     if (step.tool === 'tool_signal_harvester') return { num: 1, label: "Harvesting signals..." };
     if (step.tool === 'tool_research_analyst') return { num: 2, label: "Generating research brief..." };
@@ -102,6 +155,21 @@ export default function App() {
           </p>
         </header>
 
+        {/* Phase 6: Campaign Stats Dashboard */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+          {[
+            { label: "Signals Detected", value: stats.signals_detected, color: "from-blue-500 to-indigo-600" },
+            { label: "Emails Generated", value: stats.emails_generated, color: "from-purple-500 to-pink-600" },
+            { label: "Emails Sent", value: stats.emails_sent, color: "from-emerald-500 to-teal-600" }
+          ].map((stat, i) => (
+            <div key={i} className="relative group overflow-hidden bg-white/5 border border-white/10 rounded-3xl p-6 transition-all hover:border-white/20 hover:bg-white/10">
+              <div className={`absolute -right-4 -top-4 w-24 h-24 bg-gradient-to-br ${stat.color} opacity-10 blur-2xl group-hover:opacity-20 transition-opacity`}></div>
+              <p className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-2">{stat.label}</p>
+              <h3 className="text-4xl font-black text-white">{stat.value}</h3>
+            </div>
+          ))}
+        </div>
+
         {success && (
           <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-6 py-4 rounded-2xl flex items-center gap-3 animate-in fade-in zoom-in duration-300 shadow-[0_0_40px_rgba(16,185,129,0.1)]">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
@@ -118,7 +186,6 @@ export default function App() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           
-          {/* Left Column: Form Setup */}
           <div className="lg:col-span-5 flex flex-col gap-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-black text-white flex items-center gap-3">
@@ -178,7 +245,6 @@ export default function App() {
             </form>
           </div>
 
-          {/* Right Column: Console & Result */}
           <div className="lg:col-span-7 flex flex-col gap-8">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-black text-white flex items-center gap-3">
@@ -228,22 +294,41 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Signals Found Visualization */}
               {parsedSignals && (
                 <div className="mt-6 pt-6 border-t border-white/5 animate-in fade-in zoom-in duration-700">
                    <h3 className="text-xs font-black text-indigo-400 uppercase tracking-[0.2em] mb-4">Signals Harvested</h3>
                    <div className="bg-indigo-500/5 rounded-2xl border border-indigo-500/10 p-5 space-y-4">
                      {Object.entries(parsedSignals).map(([company, data]: any) => (
                        <div key={company}>
-                         <h4 className="text-white font-bold mb-2 flex items-center gap-2">
-                           <div className="w-2 h-2 bg-green-400 rounded-full shadow-[0_0_8px_rgba(74,222,128,0.5)]"></div>
-                           {company}
+                         <h4 className="text-white font-bold mb-3 flex items-center justify-between">
+                           <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-green-400 rounded-full shadow-[0_0_8px_rgba(74,222,128,0.5)]"></div>
+                            {company}
+                           </div>
+                           <span className="text-[10px] bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/30 uppercase tracking-tighter">Verified Signals</span>
                          </h4>
-                         <ul className="grid grid-cols-1 gap-2">
-                           {data.signals.map((sig: string, i: number) => (
-                             <li key={i} className="text-slate-400 text-sm flex gap-3 items-start bg-black/30 p-2.5 rounded-lg border border-white/5">
-                               <span className="text-indigo-500 font-bold">•</span>
-                               {sig}
+                         <ul className="grid grid-cols-1 gap-4">
+                           {data.signals?.map((sig: any, i: number) => (
+                             <li key={i} className="group/sig flex flex-col gap-2 bg-black/30 p-4 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-all">
+                               <div className="flex items-start justify-between gap-3">
+                                 <h5 className="text-slate-200 font-bold text-sm leading-tight flex-1 line-clamp-1">{sig.title || "Untitled Signal"}</h5>
+                                 {sig.link && (
+                                   <a 
+                                     href={sig.link} 
+                                     target="_blank" 
+                                     rel="noopener noreferrer" 
+                                     className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 shrink-0 bg-indigo-500/10 px-2 py-1 rounded-lg border border-indigo-500/20"
+                                   >
+                                     View Source
+                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                   </a>
+                                 )}
+                               </div>
+                               {sig.snippet && (
+                                 <p className="text-slate-500 text-xs leading-relaxed line-clamp-2">
+                                   {sig.snippet}
+                                 </p>
+                               )}
                              </li>
                            ))}
                          </ul>
@@ -264,6 +349,31 @@ export default function App() {
                     <div className="text-sm font-medium text-slate-300 whitespace-pre-wrap bg-slate-900/50 p-6 rounded-2xl border border-white/5 leading-loose shadow-inner">
                       {finalResult.replace(/\\n/g, '\n').replace(/^["']|["']$/g, '').replace('--- DRAFTED EMAIL ---', '')}
                     </div>
+
+                    {!isApproved && (
+                      <button
+                        onClick={handleApproveSend}
+                        disabled={isApproving}
+                        className="mt-6 w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl transition-all shadow-[0_10px_30px_rgba(16,185,129,0.3)] flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
+                      >
+                        {isApproving ? (
+                          <>
+                            <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            DISPATCHING...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-5 h-5 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            APPROVE & SEND
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
