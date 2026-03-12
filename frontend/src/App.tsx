@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 type Step = {
   role: string;
   content: string;
-  type?: 'thought' | 'action' | 'observation' | 'decision'; // Added 'type' property
+  type?: 'thought' | 'action' | 'observation' | 'decision';
   tool?: string;
   args?: any;
 };
@@ -88,7 +88,6 @@ export default function App() {
       const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       const emailCopy = finalResult?.replace(/\\n/g, '\n').replace(/^["']|["']$/g, '').replace('--- DRAFTED EMAIL ---', '') || "";
 
-       // Extract target company from history (tool_signal_harvester content usually has it)
        const harvesterStep = history.find(s => s.tool === 'tool_signal_harvester' && s.role === 'assistant');
        let targetCompany = "Unknown";
        if (harvesterStep && harvesterStep.args) {
@@ -129,12 +128,10 @@ export default function App() {
     } catch (e) {}
   }
 
-  // Transform history into granular steps for display
   const steps = useMemo(() => {
     const transformedSteps: Step[] = [];
     history.forEach(step => {
       if (step.role === 'assistant') {
-        // Assistant messages can be thoughts or actions
         const thoughtMatch = step.content.match(/^Thought:\s*(.*)/s);
         if (thoughtMatch) {
           transformedSteps.push({
@@ -142,16 +139,14 @@ export default function App() {
             type: 'thought',
             content: thoughtMatch[1].trim(),
           });
-        }
-        if (step.tool) {
-          transformedSteps.push({
+        } else if (step.tool) {
+           transformedSteps.push({
             ...step,
             type: 'action',
-            content: `Calling tool: ${step.tool}`,
+            content: step.tool,
           });
         }
       } else if (step.role === 'tool') {
-        // Tool messages are observations
         transformedSteps.push({
           ...step,
           type: 'observation',
@@ -159,24 +154,8 @@ export default function App() {
         });
       }
     });
-    if (finalResult) {
-      transformedSteps.push({
-        role: 'assistant',
-        type: 'decision',
-        content: finalResult.replace(/\\n/g, '\n').replace(/^["']|["']$/g, '').replace('--- DRAFTED EMAIL ---', ''),
-      });
-    }
     return transformedSteps;
-  }, [history, finalResult]);
-
-  // The getAgentStep function is no longer directly used for the main execution log display
-  // but might be kept if other parts of the UI still rely on it.
-  const getAgentStep = (step: Step) => {
-    if (step.tool === 'tool_signal_harvester') return { num: 1, label: "Harvesting signals..." };
-    if (step.tool === 'tool_research_analyst') return { num: 2, label: "Generating research brief..." };
-    if (step.tool === 'tool_outreach_automated_sender') return { num: 3, label: "Drafting outreach email..." };
-    return null;
-  };
+  }, [history]);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0b1120] to-black p-4 md:p-8 flex flex-col items-center">
@@ -198,7 +177,6 @@ export default function App() {
           </p>
         </header>
 
-        {/* Phase 6: Campaign Stats Dashboard */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           {[
             { label: "Signals Detected", value: stats.signals_detected, color: "from-blue-500 to-indigo-600" },
@@ -214,7 +192,7 @@ export default function App() {
         </div>
 
         {success && (
-          <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-6 py-4 rounded-2xl flex items-center gap-3 animate-in fade-in zoom-in duration-300 shadow-[0_0_40px_rgba(16,185,129,0.1)]">
+          <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-6 py-4 rounded-2xl flex items-center gap-3 animate-in fade-in zoom-in duration-300">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
             <span className="font-bold">{success}</span>
           </div>
@@ -228,21 +206,15 @@ export default function App() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-          
-          <div className="lg:col-span-5 flex flex-col gap-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-black text-white flex items-center gap-3">
-                Parameters
-              </h2>
-            </div>
-            
+          <div className="lg:col-span-12 xl:col-span-5 flex flex-col gap-6">
+            <h2 className="text-2xl font-black text-white">Parameters</h2>
             <form onSubmit={runAgent} className="flex flex-col gap-6 bg-white/5 p-6 rounded-3xl border border-white/5">
               <div className="flex flex-col gap-3">
                 <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">Ideal Customer Profile</label>
                 <textarea 
                   value={icp}
                   onChange={(e) => setIcp(e.target.value)}
-                  className="w-full bg-black/40 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all resize-none font-medium leading-relaxed shadow-inner"
+                  className="w-full bg-black/40 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all resize-none shadow-inner"
                   rows={3}
                   required
                 />
@@ -252,7 +224,7 @@ export default function App() {
                 <textarea 
                   value={task}
                   onChange={(e) => setTask(e.target.value)}
-                  className="w-full bg-black/40 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all resize-none font-medium leading-relaxed shadow-inner"
+                  className="w-full bg-black/40 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all resize-none shadow-inner"
                   rows={3}
                   required
                 />
@@ -263,176 +235,82 @@ export default function App() {
                   type="email"
                   value={targetEmail}
                   onChange={(e) => setTargetEmail(e.target.value)}
-                  className="w-full bg-black/40 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all font-medium shadow-inner"
+                  className="w-full bg-black/40 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all shadow-inner"
                   required
                 />
               </div>
-
               <button 
                 type="submit" 
                 disabled={isRunning}
-                className="group relative w-full flex justify-center py-5 px-6 border border-transparent text-lg font-black rounded-2xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none transition-all duration-300 overflow-hidden shadow-[0_20px_40px_rgba(79,70,229,0.3)] disabled:opacity-50 active:scale-95"
+                className="w-full py-5 bg-indigo-600 hover:bg-indigo-500 text-lg font-black rounded-2xl text-white transition-all shadow-[0_20px_40px_rgba(79,70,229,0.3)] disabled:opacity-50 active:scale-95"
               >
-                {isRunning ? (
-                  <span className="flex items-center gap-3">
-                    <svg className="animate-spin h-6 w-6 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    ORCHESTRATING...
-                  </span>
-                ) : (
-                  'INITIATE DEPLOYMENT'
-                )}
+                {isRunning ? 'ORCHESTRATING...' : 'INITIATE DEPLOYMENT'}
               </button>
             </form>
           </div>
 
-          <div className="lg:col-span-7 flex flex-col gap-6">
-            <div>
-              <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2 uppercase tracking-tighter">
-                <span className="w-2 h-6 bg-indigo-500 rounded-full"></span>
-                Execution Engine
-              </h3>
+          <div className="lg:col-span-12 xl:col-span-7 flex flex-col gap-6">
+            <h2 className="text-2xl font-black text-white">Execution Engine</h2>
+            <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 min-h-[400px] overflow-y-auto max-h-[600px] custom-scrollbar">
+              {steps.length === 0 && !isRunning && (
+                <div className="flex flex-col items-center justify-center h-full text-slate-500 gap-4 opacity-50 text-center">
+                  <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                  <p className="text-sm font-medium">No execution activity detected.</p>
+                </div>
+              )}
               
-              {/* Thought Logs */}
-              <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 min-h-[400px] overflow-y-auto max-h-[600px] custom-scrollbar">
-                {steps.length === 0 && !isRunning && (
-                  <div className="flex flex-col items-center justify-center h-full text-slate-500 gap-4 opacity-50">
-                    <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    <p className="text-sm font-medium">No execution activity detected.</p>
+              <div className="space-y-4">
+                {steps.map((step, idx) => (
+                  <div key={idx} className={`p-4 rounded-xl border transition-all ${
+                    step.type === 'thought' ? 'bg-amber-500/5 border-amber-500/20' :
+                    step.type === 'action' ? 'bg-indigo-500/5 border-indigo-500/20' :
+                    step.type === 'observation' ? 'bg-emerald-500/5 border-emerald-500/20' :
+                    'bg-slate-800/50 border-slate-700'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-2">
+                       {step.type === 'thought' && <span className="text-[10px] font-bold uppercase tracking-widest text-amber-500">Reasoning</span>}
+                       {step.type === 'action' && <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-500">Action: {step.content}</span>}
+                       {step.type === 'observation' && <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-500">Observation</span>}
+                    </div>
+                    <p className={`text-sm leading-relaxed ${
+                      step.type === 'thought' ? 'text-amber-200/80 italic' :
+                      step.type === 'observation' ? 'text-emerald-200/80 line-clamp-3 hover:line-clamp-none cursor-pointer' :
+                      'text-slate-300'
+                    }`}>
+                      {step.type === 'action' ? 'Preparing tools...' : step.content}
+                    </p>
+                  </div>
+                ))}
+                
+                {isRunning && (
+                  <div className="flex items-center gap-3 p-4 bg-indigo-500/5 border border-indigo-500/20 rounded-xl animate-pulse">
+                    <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce"></div>
+                    <p className="text-sm text-indigo-300">Agent is reasoning...</p>
                   </div>
                 )}
-                
-                <div className="space-y-4">
-                  {steps.map((step, idx) => (
-                    <div key={idx} className={`p-4 rounded-xl border animate-in fade-in slide-in-from-bottom-2 duration-500 ${
-                      step.type === 'thought' ? 'bg-amber-500/5 border-amber-500/20' :
-                      step.type === 'action' ? 'bg-indigo-500/5 border-indigo-500/20' :
-                      step.type === 'observation' ? 'bg-emerald-500/5 border-emerald-500/20' :
-                      step.type === 'decision' ? 'bg-white/5 border-white/10' :
-                      'bg-slate-800/50 border-slate-700'
-                    }`}>
-                      <div className="flex items-center gap-2 mb-2">
-                         {step.type === 'thought' && <span className="text-[10px] font-bold uppercase tracking-widest text-amber-500">Thought</span>}
-                         {step.type === 'action' && <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-500">Action: {step.content}</span>}
-                         {step.type === 'observation' && <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-500">Observation</span>}
-                         {step.type === 'decision' && <span className="text-[10px] font-bold uppercase tracking-widest text-white">Final Decision</span>}
-                      </div>
-                      <p className={`text-sm leading-relaxed ${
-                        step.type === 'thought' ? 'text-amber-200/80 italic' :
-                        step.type === 'observation' ? 'text-emerald-200/80' :
-                        'text-slate-300'
-                      }`}>
-                        {step.type === 'action' ? 'Dispatched Tooling' : step.content}
-                      </p>
-                      {step.args && (
-                        <pre className="mt-2 text-[10px] bg-black/40 p-2 rounded text-indigo-300 overflow-x-auto">
-                          {JSON.stringify(step.args, null, 2)}
-                        </pre>
-                      )}
-                    </div>
-                  ))}
-                  
-                  {isRunning && (
-                    <div className="flex items-center gap-3 p-4 bg-indigo-500/5 border border-indigo-500/20 rounded-xl animate-pulse">
-                      <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce"></div>
-                      <p className="text-sm text-indigo-300">Agent is reasoning...</p>
-                    </div>
-                  )}
-                  <div ref={consoleEndRef} />
-                </div>
+                <div ref={consoleEndRef} />
               </div>
             </div>
 
-              {parsedSignals && (
-                <div className="mt-6 pt-6 border-t border-white/5 animate-in fade-in zoom-in duration-700">
-                   <h3 className="text-xs font-black text-indigo-400 uppercase tracking-[0.2em] mb-4">Signals Harvested</h3>
-                   <div className="bg-indigo-500/5 rounded-2xl border border-indigo-500/10 p-5 space-y-4">
-                     {Object.entries(parsedSignals).map(([company, data]: any) => (
-                       <div key={company}>
-                         <h4 className="text-white font-bold mb-3 flex items-center justify-between">
-                           <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-green-400 rounded-full shadow-[0_0_8px_rgba(74,222,128,0.5)]"></div>
-                            {company}
-                           </div>
-                           <span className="text-[10px] bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/30 uppercase tracking-tighter">Verified Signals</span>
-                         </h4>
-                         <ul className="grid grid-cols-1 gap-4">
-                           {data.signals?.map((sig: any, i: number) => (
-                             <li key={i} className="group/sig flex flex-col gap-2 bg-black/30 p-4 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-all">
-                               <div className="flex items-start justify-between gap-3">
-                                 <h5 className="text-slate-200 font-bold text-sm leading-tight flex-1 line-clamp-1">{sig.title || "Untitled Signal"}</h5>
-                                 {sig.link && (
-                                   <div className="flex flex-col items-end gap-1">
-                                     <a 
-                                       href={sig.link} 
-                                       target="_blank" 
-                                       rel="noopener noreferrer" 
-                                       className="text-[10px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 shrink-0 bg-indigo-500/10 px-2 py-1 rounded-lg border border-indigo-500/20"
-                                     >
-                                       View Source
-                                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-                                     </a>
-                                     <span className="text-[9px] text-slate-500 uppercase tracking-widest font-medium">Source: {new URL(sig.link).hostname.replace('www.', '')}</span>
-                                   </div>
-                                 )}
-                               </div>
-                               {sig.snippet && (
-                                 <p className="text-slate-500 text-xs leading-relaxed line-clamp-2">
-                                   {sig.snippet}
-                                 </p>
-                               )}
-                             </li>
-                           ))}
-                         </ul>
-                       </div>
-                     ))}
-                   </div>
-                </div>
-              )}
-            </div>
-            
             {finalResult && (
-              <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000">
-                <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-[1px] rounded-[2rem] shadow-2xl">
-                  <div className="bg-[#0b1120] rounded-[1.95rem] p-8">
-                    <h3 className="text-xl font-black text-white mb-6 flex items-center gap-3">
-                      Automated Outreach Draft
-                    </h3>
-                    <div className="text-sm font-medium text-slate-300 whitespace-pre-wrap bg-slate-900/50 p-6 rounded-2xl border border-white/5 leading-loose shadow-inner">
-                      {finalResult.replace(/\\n/g, '\n').replace(/^["']|["']$/g, '').replace('--- DRAFTED EMAIL ---', '')}
-                    </div>
-
-                    {!isApproved && (
-                      <button
-                        onClick={handleApproveSend}
-                        disabled={isApproving}
-                        className="mt-6 w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl transition-all shadow-[0_10px_30px_rgba(16,185,129,0.3)] flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
-                      >
-                        {isApproving ? (
-                          <>
-                            <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            DISPATCHING...
-                          </>
-                        ) : (
-                          <>
-                            <svg className="w-5 h-5 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            APPROVE & SEND
-                          </>
-                        )}
-                      </button>
-                    )}
+              <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-[1px] rounded-[2rem] shadow-2xl mt-4">
+                <div className="bg-[#0b1120] rounded-[1.95rem] p-8">
+                  <h3 className="text-xl font-black text-white mb-6">Automated Outreach Draft</h3>
+                  <div className="text-sm font-medium text-slate-300 whitespace-pre-wrap bg-slate-900/50 p-6 rounded-2xl border border-white/5 leading-loose shadow-inner">
+                    {finalResult.replace(/\\n/g, '\n').replace(/^["']|["']$/g, '').replace('--- DRAFTED EMAIL ---', '')}
                   </div>
+                  {!isApproved && (
+                    <button
+                      onClick={handleApproveSend}
+                      disabled={isApproving}
+                      className="mt-6 w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl transition-all shadow-[0_10px_30px_rgba(16,185,129,0.3)] flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
+                    >
+                      {isApproving ? 'DISPATCHING...' : 'APPROVE & SEND'}
+                    </button>
+                  )}
                 </div>
               </div>
             )}
-
           </div>
         </div>
       </div>
