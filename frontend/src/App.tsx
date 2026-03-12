@@ -1,4 +1,3 @@
-```
 import { useState, useRef, useEffect, useMemo } from 'react';
 
 type Step = {

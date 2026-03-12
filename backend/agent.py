@@ -205,22 +205,15 @@ def run_fire_reach_agent(icp: str, task: str, target_email: str):
     system_instruction = """You are the FireReach Autonomous Outreach Engine.
 Objective: Discover target companies, research signals, and send SHORT, high-conversion outreach emails.
 
-Reasoning Process:
-Before each tool call, write one sentence of reasoning. For example: "I will discover companies matching the ICP."
-
-Flow:
-1. Discovery: Use `tool_company_finder` with search-friendly keywords (e.g., 'Series B cybersecurity') to find startups.
-2. Selection: Analysis the discovered companies and pick the BEST candidate.
-3. Signal Capture: Use `tool_signal_harvester` for the SPECIFIC company chosen.
-4. Contextual Research: Use `tool_research_analyst` (MUST pass raw signals).
-5. Automated Delivery: Use `tool_outreach_automated_sender` (MUST pass brief and target_company). This will prepare the FINAL draft for user approval.
-
-Persistent Memory:
-If a tool returns "Skipped: [Company] already in memory", do NOT attempt to send the email. Report to the user that this contact was already made.
-
 Strict Linear Flow:
 1. Discover -> 2. Harvest -> 3. Research -> 4. Delivery.
 NEVER repeat a step. If you have the results of a previous step, move to the NEXT one immediately.
+
+TOOL USAGE POLICY:
+- Use ONLY the tools listed below: `tool_company_finder`, `tool_signal_harvester`, `tool_research_analyst`, `tool_outreach_automated_sender`.
+- If you need to search Google or Brave, use `tool_signal_harvester` or `tool_company_finder`.
+- NEVER attempt to call tools like `brave_search` or `google_search` - they do not exist in this environment. 
+- Failure to follow these tool-calling rules will result in a system crash.
 """
     
     tools = [
@@ -416,19 +409,20 @@ NEVER repeat a step. If you have the results of a previous step, move to the NEX
             final_response = response_message.content
             # Special check: If the final response is short/meta, try to append the last sent email
             for msg in reversed(messages):
-                # Safely check for role and name as msg can be a dict or a ChatCompletionMessage object
-                msg_role = msg.role if hasattr(msg, 'role') else (msg.get("role") if isinstance(msg, dict) else None)
-                msg_name = msg.name if hasattr(msg, 'name') else (msg.get("name") if isinstance(msg, dict) else None)
-                
-                if msg_role == "tool" and msg_name == "tool_outreach_automated_sender":
-                    try:
-                        content = msg.content if hasattr(msg, 'content') else msg.get("content")
-                        res_data = json.loads(content)
-                        if "email_copy" in res_data:
-                            final_response += "\n\n--- DRAFTED EMAIL ---\n\n" + res_data["email_copy"]
-                    except:
-                        pass
-                    break
+                # Safely get role and name
+                try:
+                    m_role = getattr(msg, 'role', None) or (msg.get("role") if isinstance(msg, dict) else None)
+                    m_name = getattr(msg, 'name', None) or (msg.get("name") if isinstance(msg, dict) else None)
+                    
+                    if m_role == "tool" and m_name == "tool_outreach_automated_sender":
+                        content = getattr(msg, 'content', None) or msg.get("content")
+                        if content:
+                            res_data = json.loads(content)
+                            if "email_copy" in res_data:
+                                final_response += "\n\n--- DRAFTED EMAIL ---\n\n" + res_data["email_copy"]
+                        break
+                except:
+                    continue
             
             history_steps.append({
                 "role": "assistant", 
