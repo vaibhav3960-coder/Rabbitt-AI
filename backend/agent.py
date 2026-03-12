@@ -218,17 +218,9 @@ Flow:
 Persistent Memory:
 If a tool returns "Skipped: [Company] already in memory", do NOT attempt to send the email. Report to the user that this contact was already made.
 
-Outreach Strategy:
-- Short = Better.
-- Direct = Better.
-- Personalized = Better.
-- CTA: Always end with a low-friction question like "Worth a quick 10-min chat?".
-
-Zero-Hallucination Policy: 
-- Use ONLY actual details returned by tools.
-- If no results, stop and report.
-
-Output Rule: In your final response, display the full body of the email you drafted.
+Strict Linear Flow:
+1. Discover -> 2. Harvest -> 3. Research -> 4. Delivery.
+NEVER repeat a step. If you have the results of a previous step, move to the NEXT one immediately.
 """
     
     tools = [
@@ -321,6 +313,9 @@ Output Rule: In your final response, display the full body of the email you draf
     
     history_steps = [{"role": "user", "content": messages[-1]["content"]}]
     
+    # Phase 12: Track executed tools to prevent duplicates
+    executed_tool_signatures = set()
+    
     # Simple loop for orchestration (up to 4 steps)
     final_response = "Execution incomplete."
     for _ in range(5):
@@ -367,24 +362,35 @@ Output Rule: In your final response, display the full body of the email you draf
 
                 # Execute the matched function
                 function_response = ""
-                if function_name == "tool_company_finder":
-                    function_response = tool_company_finder(function_args.get("icp", ""))
-                elif function_name == "tool_signal_harvester":
-                    function_response = tool_signal_harvester(function_args.get("target", ""))
-                elif function_name == "tool_research_analyst":
-                    function_response = tool_research_analyst(function_args.get("signals", ""), function_args.get("icp", ""))
-                elif function_name == "tool_outreach_automated_sender":
-                    # Phase 7: Memory check before sending
-                    target_company = function_args.get("target_company", "Unknown") # We need to ensure tools pass company name
-                    memory = _get_memory() # Assuming _get_memory() is defined elsewhere
-                    if target_company.lower() in memory:
-                        print(f"DEBUG: SKIPPING {target_company} - Already contacted.")
-                        function_response = f"Skipped: {target_company} already in memory."
-                    else:
-                        function_response = tool_outreach_automated_sender(function_args["brief"], function_args["target_email"])
-                        # Note: We update memory in main.py after FINAL approval
+                
+                # Phase 12: Duplicate Guard
+                arg_sig = json.dumps(function_args, sort_keys=True)
+                call_sig = f"{function_name}:{arg_sig}"
+                
+                if call_sig in executed_tool_signatures:
+                    print(f"DEBUG: Guarding against duplicate call: {function_name}")
+                    function_response = f"Action already performed. results are in history. Please move to the next task step."
                 else:
-                    function_response = "Unknown tool"
+                    executed_tool_signatures.add(call_sig)
+                    
+                    if function_name == "tool_company_finder":
+                        function_response = tool_company_finder(function_args.get("icp", ""))
+                    elif function_name == "tool_signal_harvester":
+                        function_response = tool_signal_harvester(function_args.get("target", ""))
+                    elif function_name == "tool_research_analyst":
+                        function_response = tool_research_analyst(function_args.get("signals", ""), function_args.get("icp", ""))
+                    elif function_name == "tool_outreach_automated_sender":
+                        # Phase 7: Memory check before sending
+                        target_company = function_args.get("target_company", "Unknown") # We need to ensure tools pass company name
+                        memory = _get_memory() # Assuming _get_memory() is defined elsewhere
+                        if target_company.lower() in memory:
+                            print(f"DEBUG: SKIPPING {target_company} - Already contacted.")
+                            function_response = f"Skipped: {target_company} already in memory."
+                        else:
+                            function_response = tool_outreach_automated_sender(function_args["brief"], function_args["target_email"])
+                            # Note: We update memory in main.py after FINAL approval
+                    else:
+                        function_response = "Unknown tool"
                 
                 # Internal logging to terminal
                 print(f"DEBUG: Tool {function_name} execution complete.")
