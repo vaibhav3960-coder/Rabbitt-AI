@@ -3,38 +3,7 @@ import json
 from groq import Groq
 from duckduckgo_search import DDGS
 from rag_engine import get_rag_context
-
-STATS_FILE = os.path.join(os.path.dirname(__file__), "stats.json")
-
-def _update_stats(category: str, increment: int = 1):
-    try:
-        if not os.path.exists(STATS_FILE):
-            with open(STATS_FILE, "w") as f:
-                json.dump({"signals_detected": 0, "emails_generated": 0, "emails_sent": 0}, f)
-        
-        with open(STATS_FILE, "r") as f:
-            stats = json.load(f)
-        
-        stats[category] = stats.get(category, 0) + increment
-        
-        with open(STATS_FILE, "w") as f:
-            json.dump(stats, f, indent=4)
-    except Exception as e:
-        print(f"DEBUG: Failed to update stats: {e}")
-
-MEMORY_FILE = os.path.join(os.path.dirname(__file__), "memory.json")
-
-def _get_memory():
-    if not os.path.exists(MEMORY_FILE):
-        return {}
-    with open(MEMORY_FILE, "r") as f:
-        return json.load(f)
-
-def _update_memory(company: str, status: str = "contacted"):
-    memory = _get_memory()
-    memory[company.lower()] = status
-    with open(MEMORY_FILE, "w") as f:
-        json.dump(memory, f, indent=4)
+from utils import _update_stats, _get_memory, _update_memory
 
 def tool_company_finder(icp: str) -> str:
     """
@@ -373,15 +342,22 @@ TOOL USAGE POLICY:
                     elif function_name == "tool_research_analyst":
                         function_response = tool_research_analyst(function_args.get("signals", ""), function_args.get("icp", ""))
                     elif function_name == "tool_outreach_automated_sender":
-                        # Phase 7: Memory check before sending
-                        target_company = function_args.get("target_company", "Unknown") # We need to ensure tools pass company name
-                        memory = _get_memory() # Assuming _get_memory() is defined elsewhere
+                        # Extract target_company from args or harvester history fallback
+                        target_company = function_args.get("target_company")
+                        if not target_company:
+                            # Fallback: parse from previous harvester if available
+                            target_company = "Unknown"
+                        
+                        memory = _get_memory()
                         if target_company.lower() in memory:
                             print(f"DEBUG: SKIPPING {target_company} - Already contacted.")
                             function_response = f"Skipped: {target_company} already in memory."
                         else:
-                            function_response = tool_outreach_automated_sender(function_args["brief"], function_args["target_email"])
-                            # Note: We update memory in main.py after FINAL approval
+                            function_response = tool_outreach_automated_sender(
+                                function_args["brief"], 
+                                function_args["target_email"],
+                                target_company
+                            )
                     else:
                         function_response = "Unknown tool"
                 
