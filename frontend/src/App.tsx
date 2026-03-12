@@ -313,15 +313,18 @@ export default function App() {
                                <div className="flex items-start justify-between gap-3">
                                  <h5 className="text-slate-200 font-bold text-sm leading-tight flex-1 line-clamp-1">{sig.title || "Untitled Signal"}</h5>
                                  {sig.link && (
-                                   <a 
-                                     href={sig.link} 
-                                     target="_blank" 
-                                     rel="noopener noreferrer" 
-                                     className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 shrink-0 bg-indigo-500/10 px-2 py-1 rounded-lg border border-indigo-500/20"
-                                   >
-                                     View Source
-                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-                                   </a>
+                                   <div className="flex flex-col items-end gap-1">
+                                     <a 
+                                       href={sig.link} 
+                                       target="_blank" 
+                                       rel="noopener noreferrer" 
+                                       className="text-[10px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 shrink-0 bg-indigo-500/10 px-2 py-1 rounded-lg border border-indigo-500/20"
+                                     >
+                                       View Source
+                                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                     </a>
+                                     <span className="text-[9px] text-slate-500 uppercase tracking-widest font-medium">Source: {new URL(sig.link).hostname.replace('www.', '')}</span>
+                                   </div>
                                  )}
                                </div>
                                {sig.snippet && (
